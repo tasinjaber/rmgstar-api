@@ -1,0 +1,180 @@
+const express = require('express');
+const router = express.Router();
+const JobPost = require('../../models/JobPost');
+
+// Get all jobs
+router.get('/', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search, isActive } = req.query;
+    const query = {};
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { companyName: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (isActive !== undefined) query.isActive = isActive === 'true';
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const jobs = await JobPost.find(query)
+      .populate('employerId', 'name email')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await JobPost.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: {
+        jobs,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / parseInt(limit))
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch jobs',
+      error: error.message
+    });
+  }
+});
+
+// Get single job
+router.get('/:id', async (req, res) => {
+  try {
+    const job = await JobPost.findById(req.params.id).populate('employerId', 'name email');
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+    res.json({ success: true, data: { job } });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch job',
+      error: error.message
+    });
+  }
+});
+
+// Create job
+router.post('/', async (req, res) => {
+  try {
+    const job = await JobPost.create(req.body);
+
+    res.status(201).json({
+      success: true,
+      message: 'Job created successfully',
+      data: { job }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create job',
+      error: error.message
+    });
+  }
+});
+
+// Update job
+router.put('/:id', async (req, res) => {
+  try {
+    const job = await JobPost.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Job updated successfully',
+      data: { job }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update job',
+      error: error.message
+    });
+  }
+});
+
+// Delete job
+router.delete('/:id', async (req, res) => {
+  try {
+    const job = await JobPost.findByIdAndDelete(req.params.id);
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Job deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete job',
+      error: error.message
+    });
+  }
+});
+
+// Duplicate job
+router.post('/:id/duplicate', async (req, res) => {
+  try {
+    const job = await JobPost.findById(req.params.id);
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+
+    const original = job.toObject();
+    delete original._id;
+    delete original.createdAt;
+    delete original.updatedAt;
+
+    const baseTitle = (original.title || 'Job').trim();
+    const match = baseTitle.match(/^(.*?)(?:\s+(\d+))?$/);
+    const tBase = (match?.[1] || baseTitle).trim();
+    const tNum = match?.[2] ? parseInt(match[2], 10) : 1;
+    const newTitle = `${tBase} ${Math.max(2, tNum + 1)}`;
+
+    const data = {
+      ...original,
+      title: newTitle,
+      isActive: false,
+    };
+
+    const created = await JobPost.create(data);
+    return res.status(201).json({
+      success: true,
+      message: 'Job duplicated successfully',
+      data: { job: created }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to duplicate job',
+      error: error.message
+    });
+  }
+});
+
+module.exports = router;
+

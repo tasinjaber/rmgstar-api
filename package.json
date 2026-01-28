@@ -1,0 +1,43 @@
+{
+  "name": "rmg-training-platform",
+  "version": "1.0.0",
+  "description": "RMG Training & Job Platform with Admin Panel",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "nodemon server/index.js",
+    "client": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "start": "node server/index.js",
+    "seed": "node server/scripts/seed.js",
+    "export-db": "node server/scripts/export-db.js",
+    "import-db": "node server/scripts/import-db.js",
+    "start-mongodb": "node server/scripts/start-mongodb.js"
+  },
+  "keywords": [
+    "rmg",
+    "training",
+    "education",
+    "jobs"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@radix-ui/react-checkbox": "^1.3.3",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.3",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^7.0.11"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.2"
+  }
+}
