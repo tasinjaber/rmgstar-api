@@ -16,6 +16,16 @@ const jobPostSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'JobCompany',
+    default: null
+  },
+  companyEmail: {
+    type: String,
+    default: '',
+    trim: true
+  },
   location: {
     type: String,
     required: true,
@@ -24,7 +34,22 @@ const jobPostSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['Garments', 'Retail Brands', 'Buying House', 'Merchandising', 'Textile', 'Washing', 'Quality Control', 'Production', 'Design', 'Other']
+    trim: true
+  },
+  categoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'JobCategory',
+    default: null
+  },
+  subCategory: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  subCategoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'JobSubCategory',
+    default: null
   },
   type: {
     type: String,

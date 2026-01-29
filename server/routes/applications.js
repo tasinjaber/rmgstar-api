@@ -3,6 +3,8 @@ const router = express.Router();
 const JobApplication = require('../models/JobApplication');
 const JobPost = require('../models/JobPost');
 const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
+const { sendMailSafe } = require('../utils/mailer');
+const { applicantEmail, reviewerEmail } = require('../utils/jobApplicationEmailTemplates');
 
 // Apply for a job (supports both authenticated and non-authenticated users)
 router.post('/', optionalAuth, async (req, res) => {
@@ -57,6 +59,48 @@ router.post('/', optionalAuth, async (req, res) => {
       coverLetter: coverLetter || message || '',
       message: message || ''
     });
+
+    // Fire-and-forget emails (do not block application creation)
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const companyEmail = job.companyEmail || '';
+    const summary = `Job: ${job.title}\nCompany: ${job.companyName}\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\nCV: ${cvUrl || ''}`;
+
+    // Applicant confirmation
+    sendMailSafe({
+      to: email,
+      subject: `Application submitted: ${job.title} (${job.companyName})`,
+      html: applicantEmail({
+        applicantName: name,
+        jobTitle: job.title,
+        companyName: job.companyName,
+        summary
+      })
+    });
+
+    // Admin + Company notification (include all details)
+    const reviewerHtml = reviewerEmail({
+      title: 'New job application received',
+      jobTitle: job.title,
+      companyName: job.companyName,
+      applicant: { name, email, phone },
+      cvUrl: cvUrl || '',
+      message: coverLetter || message || ''
+    });
+
+    if (adminEmail) {
+      sendMailSafe({
+        to: adminEmail,
+        subject: `New application: ${job.title} (${job.companyName})`,
+        html: reviewerHtml
+      });
+    }
+    if (companyEmail) {
+      sendMailSafe({
+        to: companyEmail,
+        subject: `New application: ${job.title} (${job.companyName})`,
+        html: reviewerHtml
+      });
+    }
 
     res.status(201).json({
       success: true,
