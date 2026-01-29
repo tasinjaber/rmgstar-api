@@ -20,7 +20,7 @@ const corsOrigins = (process.env.CORS_ORIGINS || process.env.CLIENT_URL || '')
   .map(s => s.trim())
   .filter(Boolean);
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
     if (process.env.NODE_ENV !== 'production') return callback(null, true);
     // allow non-browser requests (no Origin)
@@ -30,8 +30,12 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+// Handle preflight requests globally (critical when Authorization header is present)
+app.options('*', cors(corsOptions));
 
 // Security middleware - configure helmet to allow static files and images
 app.use(helmet({
