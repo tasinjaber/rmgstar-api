@@ -2,11 +2,11 @@ const crypto = require('crypto');
 
 // SSLcommerz Payment Gateway Integration
 class SSLcommerzGateway {
-  constructor() {
-    // Demo credentials - replace with live credentials in .env
-    this.storeId = process.env.SSLCOMMERZ_STORE_ID || 'demo';
-    this.storePassword = process.env.SSLCOMMERZ_STORE_PASSWORD || 'demo';
-    this.isLive = process.env.SSLCOMMERZ_IS_LIVE === 'true';
+  constructor(config = null) {
+    // Prefer DB-driven config (admin settings), fallback to .env
+    this.storeId = config?.storeId || process.env.SSLCOMMERZ_STORE_ID || 'demo';
+    this.storePassword = config?.storePassword || process.env.SSLCOMMERZ_STORE_PASSWORD || 'demo';
+    this.isLive = (typeof config?.isLive === 'boolean') ? config.isLive : (process.env.SSLCOMMERZ_IS_LIVE === 'true');
     this.baseUrl = this.isLive 
       ? 'https://securepay.sslcommerz.com'
       : 'https://sandbox.sslcommerz.com';
@@ -71,13 +71,13 @@ class SSLcommerzGateway {
 
 // bKash Payment Gateway Integration
 class BkashGateway {
-  constructor() {
-    // Demo credentials - replace with live credentials in .env
-    this.appKey = process.env.BKASH_APP_KEY || 'demo_app_key';
-    this.appSecret = process.env.BKASH_APP_SECRET || 'demo_app_secret';
-    this.username = process.env.BKASH_USERNAME || 'demo_username';
-    this.password = process.env.BKASH_PASSWORD || 'demo_password';
-    this.isLive = process.env.BKASH_IS_LIVE === 'true';
+  constructor(config = null) {
+    // Prefer DB-driven config (admin settings), fallback to .env
+    this.appKey = config?.appKey || process.env.BKASH_APP_KEY || 'demo_app_key';
+    this.appSecret = config?.appSecret || process.env.BKASH_APP_SECRET || 'demo_app_secret';
+    this.username = config?.username || process.env.BKASH_USERNAME || 'demo_username';
+    this.password = config?.password || process.env.BKASH_PASSWORD || 'demo_password';
+    this.isLive = (typeof config?.isLive === 'boolean') ? config.isLive : (process.env.BKASH_IS_LIVE === 'true');
     this.baseUrl = this.isLive
       ? 'https://tokenized.pay.bka.sh'
       : 'https://tokenized.sandbox.bka.sh';

@@ -93,7 +93,11 @@ router.post('/initiate', authenticate, authorize('student'), async (req, res) =>
     }
 
     if (paymentMethod === 'sslcommerz') {
-      const sslGateway = new SSLcommerzGateway();
+      const sslGateway = new SSLcommerzGateway({
+        storeId: settings.sslcommerz?.storeId,
+        storePassword: settings.sslcommerz?.storePassword,
+        isLive: settings.sslcommerz?.isLive
+      });
       const paymentData = sslGateway.generateSession({
         totalAmount: amount,
         currency: 'BDT',
@@ -147,7 +151,13 @@ router.post('/initiate', authenticate, authorize('student'), async (req, res) =>
         }
       });
     } else if (paymentMethod === 'bkash') {
-      const bkashGateway = new BkashGateway();
+      const bkashGateway = new BkashGateway({
+        appKey: settings.bkash?.appKey,
+        appSecret: settings.bkash?.appSecret,
+        username: settings.bkash?.username,
+        password: settings.bkash?.password,
+        isLive: settings.bkash?.isLive
+      });
       
       // For bKash, we need to get token first (simplified for demo)
       // In production, implement proper token management
