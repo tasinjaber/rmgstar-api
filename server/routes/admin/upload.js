@@ -23,17 +23,15 @@ const storage = multer.diskStorage({
   }
 });
 
-// File filter for images only
-const imageFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
+const MAX_IMAGE_MB = parseInt(process.env.UPLOAD_MAX_IMAGE_MB || '50', 10);
+const MAX_DOC_MB = parseInt(process.env.UPLOAD_MAX_DOC_MB || '50', 10);
 
-  if (mimetype && extname) {
+// File filter for images only (allow all image/* including svg, avif, heic etc.)
+const imageFilter = (req, file, cb) => {
+  if (file.mimetype && file.mimetype.startsWith('image/')) {
     return cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed (jpeg, jpg, png, gif, webp)'));
   }
+  cb(new Error('Only image files are allowed'));
 };
 
 // File filter for CV/Documents
@@ -51,7 +49,7 @@ const documentFilter = (req, file, cb) => {
 
 const imageUpload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: MAX_IMAGE_MB * 1024 * 1024 },
   fileFilter: imageFilter
 });
 
@@ -62,7 +60,7 @@ const handleMulterError = (err, req, res, next) => {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({
           success: false,
-          message: 'File size too large. Maximum size is 5MB.'
+          message: `File size too large. Maximum size is ${MAX_IMAGE_MB}MB.`
         });
       }
       return res.status(400).json({
@@ -87,7 +85,7 @@ const handleMulterError = (err, req, res, next) => {
 
 const documentUpload = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for documents
+  limits: { fileSize: MAX_DOC_MB * 1024 * 1024 },
   fileFilter: documentFilter
 });
 
