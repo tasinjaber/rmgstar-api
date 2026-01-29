@@ -211,6 +211,52 @@ router.get('/:slug/player', authenticate, async (req, res) => {
   }
 });
 
+// Check enrollment/access status for a course (AUTH)
+router.get('/:slug/enrollment-status', authenticate, async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const course = await Course.findOne({ slug }).select('_id');
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found' });
+    }
+
+    const enrollments = await Enrollment.find({ studentId: req.user._id })
+      .populate({
+        path: 'batchId',
+        select: 'courseId',
+        populate: { path: 'courseId', select: '_id' }
+      })
+      .sort({ createdAt: -1 });
+
+    const courseEnrollments = enrollments.filter(e =>
+      e.batchId && e.batchId.courseId && e.batchId.courseId._id.toString() === course._id.toString()
+    );
+
+    const latest = courseEnrollments[0] || null;
+    const enrolled = courseEnrollments.length > 0;
+    const canAccess = courseEnrollments.some(e => e.paymentStatus === 'paid');
+
+    return res.json({
+      success: true,
+      data: {
+        enrolled,
+        canAccess,
+        paymentStatus: latest?.paymentStatus || null,
+        enrollmentId: latest?._id || null,
+        batchId: latest?.batchId?._id || null,
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching enrollment status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch enrollment status',
+      error: error.message
+    });
+  }
+});
+
 // Get single lesson
 router.get('/lessons/:lessonId', authenticate, async (req, res) => {
   try {
