@@ -58,8 +58,8 @@ router.post('/initiate', authenticate, authorize('student'), async (req, res) =>
       return res.status(400).json({ success: false, message: 'bKash is coming soon' });
     }
 
-    const batch = await Batch.findById(batchId).populate('courseId');
     const isBook = productType === 'book';
+    const batch = isBook ? null : await Batch.findById(batchId).populate('courseId');
     if (!isBook && !batch) {
       return res.status(404).json({ success: false, message: 'Batch not found' });
     }
