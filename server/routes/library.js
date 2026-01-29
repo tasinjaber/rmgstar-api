@@ -120,6 +120,20 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
+// Get current user's book purchases
+router.get('/my/purchases', authenticate, async (req, res) => {
+  try {
+    const purchases = await LibraryPurchase.find({ userId: req.user._id })
+      .populate('itemId', 'title slug coverImage price currency')
+      .sort({ updatedAt: -1 })
+      .limit(200);
+
+    res.json({ success: true, data: { purchases } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch purchases', error: error.message });
+  }
+});
+
 // Get single library item
 router.get('/:slug', optionalAuth, async (req, res) => {
   try {
