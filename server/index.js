@@ -29,7 +29,9 @@ const corsOptions = {
     if (process.env.NODE_ENV !== 'production') return callback(null, true);
     // allow non-browser requests (no Origin)
     if (!origin) return callback(null, true);
-    if (corsOrigins.length === 0) return callback(null, false);
+    // If allowlist is not configured, fail open (prevents production breakage due to missing env)
+    // You can still restrict by setting CORS_ORIGINS / CLIENT_URL.
+    if (corsOrigins.length === 0) return callback(null, true);
     return callback(null, corsOrigins.includes(origin));
   },
   credentials: true,
