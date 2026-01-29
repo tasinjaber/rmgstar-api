@@ -12,6 +12,10 @@ require('dotenv').config();
 
 const app = express();
 
+// Running behind nginx/reverse proxy in production.
+// Needed so req.ip uses X-Forwarded-For (otherwise many users share one IP and hit rate limits fast).
+app.set('trust proxy', 1);
+
 // CORS first
 // - In production: allow multiple origins via CORS_ORIGINS (comma-separated)
 // - In development: allow all origins
@@ -63,7 +67,10 @@ app.use(helmet({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  // Production sites can easily exceed 100 requests/15min (assets, prefetch, admin, etc.)
+  max: process.env.NODE_ENV === 'production' ? 1000 : 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use('/api/', limiter);
 
