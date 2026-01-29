@@ -124,6 +124,68 @@ router.post('/initiate', authenticate, authorize('student'), async (req, res) =>
   }
 });
 
+// Confirm payment from frontend callback page (JSON response)
+router.get('/confirm', authenticate, async (req, res) => {
+  try {
+    const { tranId, method } = req.query;
+
+    const enrollment = await Enrollment.findOne({ transactionId: tranId });
+    if (!enrollment) {
+      return res.status(404).json({ success: false, message: 'Enrollment not found' });
+    }
+
+    // Verify payment with gateway (demo: mark as paid)
+    const batch = await Batch.findById(enrollment.batchId).populate('courseId');
+    const coursePrice = batch?.courseId?.discountPrice || batch?.courseId?.price || 0;
+
+    if (enrollment.paymentStatus !== 'paid') {
+      if (method === 'sslcommerz' || method === 'bkash') {
+        enrollment.paymentStatus = 'paid';
+        enrollment.amountPaid = coursePrice;
+        await enrollment.save();
+
+        // Update batch enrolled count after successful payment (avoid double increment)
+        await Batch.findByIdAndUpdate(enrollment.batchId, { $inc: { enrolledCount: 1 } });
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'Payment confirmed',
+      data: {
+        enrollmentId: enrollment._id,
+        redirectTo: '/student/dashboard?success=payment_completed'
+      }
+    });
+  } catch (error) {
+    console.error('Payment confirm error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Payment verification failed',
+      error: error.message
+    });
+  }
+});
+
+router.get('/confirm-fail', authenticate, async (req, res) => {
+  try {
+    const { tranId } = req.query;
+    const enrollment = await Enrollment.findOne({ transactionId: tranId });
+    if (enrollment && enrollment.paymentStatus !== 'paid') {
+      enrollment.paymentStatus = 'failed';
+      await enrollment.save();
+    }
+    return res.json({
+      success: true,
+      message: 'Payment marked as failed',
+      data: { redirectTo: '/student/dashboard?error=payment_failed' }
+    });
+  } catch (error) {
+    console.error('Payment confirm-fail error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to mark payment', error: error.message });
+  }
+});
+
 // Payment success callback
 router.get('/success', authenticate, async (req, res) => {
   try {
@@ -138,7 +200,7 @@ router.get('/success', authenticate, async (req, res) => {
     const batch = await Batch.findById(enrollment.batchId).populate('courseId');
     const coursePrice = batch?.courseId?.discountPrice || batch?.courseId?.price || 0;
 
-    if (method === 'sslcommerz') {
+    if (enrollment.paymentStatus !== 'paid' && method === 'sslcommerz') {
       const valId = req.query.val_id;
       // In production, verify with SSLcommerz API
       // For now, mark as paid
@@ -150,7 +212,7 @@ router.get('/success', authenticate, async (req, res) => {
       await Batch.findByIdAndUpdate(enrollment.batchId, {
         $inc: { enrolledCount: 1 }
       });
-    } else if (method === 'bkash') {
+    } else if (enrollment.paymentStatus !== 'paid' && method === 'bkash') {
       const paymentID = req.query.paymentID;
       // In production, verify with bKash API
       enrollment.paymentStatus = 'paid';

@@ -21,6 +21,15 @@ const libraryItemSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  price: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  currency: {
+    type: String,
+    default: 'BDT'
+  },
   description: {
     type: String,
     default: ''

@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const JobPost = require('../../models/JobPost');
+const JobCompany = require('../../models/JobCompany');
+const JobCategory = require('../../models/JobCategory');
+const JobSubCategory = require('../../models/JobSubCategory');
 
 // Get all jobs
 router.get('/', async (req, res) => {
@@ -66,7 +69,28 @@ router.get('/:id', async (req, res) => {
 // Create job
 router.post('/', async (req, res) => {
   try {
-    const job = await JobPost.create(req.body);
+    const data = req.body || {};
+
+    // If companyId is provided, hydrate companyName/companyEmail
+    if (data.companyId) {
+      const company = await JobCompany.findById(data.companyId);
+      if (company) {
+        data.companyName = company.name;
+        data.companyEmail = company.email || '';
+      }
+    }
+
+    // Hydrate category/subcategory display strings
+    if (data.categoryId) {
+      const cat = await JobCategory.findById(data.categoryId);
+      if (cat) data.category = cat.name;
+    }
+    if (data.subCategoryId) {
+      const sc = await JobSubCategory.findById(data.subCategoryId);
+      if (sc) data.subCategory = sc.name;
+    }
+
+    const job = await JobPost.create(data);
 
     res.status(201).json({
       success: true,
@@ -85,9 +109,27 @@ router.post('/', async (req, res) => {
 // Update job
 router.put('/:id', async (req, res) => {
   try {
+    const data = req.body || {};
+
+    if (data.companyId) {
+      const company = await JobCompany.findById(data.companyId);
+      if (company) {
+        data.companyName = company.name;
+        data.companyEmail = company.email || '';
+      }
+    }
+    if (data.categoryId) {
+      const cat = await JobCategory.findById(data.categoryId);
+      if (cat) data.category = cat.name;
+    }
+    if (data.subCategoryId) {
+      const sc = await JobSubCategory.findById(data.subCategoryId);
+      if (sc) data.subCategory = sc.name;
+    }
+
     const job = await JobPost.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      data,
       { new: true, runValidators: true }
     );
 
