@@ -286,6 +286,7 @@ router.use('/roles', require('./roles'));
 router.use('/enrollments', require('./enrollments'));
 router.use('/jobs', require('./jobs'));
 router.use('/library', require('./library'));
+router.use('/library-purchases', require('./library-purchases'));
 router.use('/blog', require('./blog'));
 router.use('/homepage', require('./homepage'));
 router.use('/settings', require('./settings'));
