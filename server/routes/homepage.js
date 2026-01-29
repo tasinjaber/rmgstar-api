@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const HomepageContent = require('../../models/HomepageContent');
+const HomepageContent = require('../models/HomepageContent');
 
 // Get homepage content (PUBLIC READ)
 router.get('/', async (req, res) => {
