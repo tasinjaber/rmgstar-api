@@ -290,6 +290,7 @@ router.use('/job-categories', require('./job-categories'));
 router.use('/job-subcategories', require('./job-subcategories'));
 router.use('/library', require('./library'));
 router.use('/library-purchases', require('./library-purchases'));
+router.use('/documents', require('./documents'));
 router.use('/blog', require('./blog'));
 router.use('/homepage', require('./homepage'));
 router.use('/settings', require('./settings'));
