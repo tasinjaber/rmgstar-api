@@ -23,7 +23,7 @@ const libraryPurchaseSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['manual', 'bkash', 'nagad', 'rocket', 'sslcommerz', 'other'],
+    enum: ['pay_later', 'manual', 'bkash', 'nagad', 'rocket', 'sslcommerz', 'other'],
     default: 'manual'
   },
   paymentStatus: {

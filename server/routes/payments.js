@@ -6,12 +6,42 @@ const Enrollment = require('../models/Enrollment');
 const Batch = require('../models/Batch');
 const Course = require('../models/Course');
 const User = require('../models/User');
+const LibraryItem = require('../models/LibraryItem');
+const LibraryPurchase = require('../models/LibraryPurchase');
+const PaymentGatewaySettings = require('../models/PaymentGatewaySettings');
 const crypto = require('crypto');
+
+async function getGatewaySettings() {
+  let settings = await PaymentGatewaySettings.findOne().lean();
+  if (!settings) {
+    const created = await PaymentGatewaySettings.create({});
+    settings = created.toObject();
+  }
+  return settings;
+}
+
+router.get('/methods', async (req, res) => {
+  try {
+    const settings = await getGatewaySettings();
+    return res.json({
+      success: true,
+      data: {
+        methods: {
+          pay_later: { enabled: settings.payLater?.enabled !== false },
+          sslcommerz: { enabled: !!settings.sslcommerz?.enabled },
+          bkash: { enabled: !!settings.bkash?.enabled }
+        }
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Failed to fetch payment methods', error: error.message });
+  }
+});
 
 // Initiate payment
 router.post('/initiate', authenticate, authorize('student'), async (req, res) => {
   try {
-    const { batchId, paymentMethod, amount, courseId, courseSlug } = req.body;
+    const { batchId, paymentMethod, amount, courseId, courseSlug, productType, itemSlug, itemId } = req.body;
 
     if (!['sslcommerz', 'bkash'].includes(paymentMethod)) {
       return res.status(400).json({
@@ -20,12 +50,18 @@ router.post('/initiate', authenticate, authorize('student'), async (req, res) =>
       });
     }
 
+    const settings = await getGatewaySettings();
+    if (paymentMethod === 'sslcommerz' && !settings.sslcommerz?.enabled) {
+      return res.status(400).json({ success: false, message: 'SSLCommerz is coming soon' });
+    }
+    if (paymentMethod === 'bkash' && !settings.bkash?.enabled) {
+      return res.status(400).json({ success: false, message: 'bKash is coming soon' });
+    }
+
     const batch = await Batch.findById(batchId).populate('courseId');
-    if (!batch) {
-      return res.status(404).json({
-        success: false,
-        message: 'Batch not found'
-      });
+    const isBook = productType === 'book';
+    if (!isBook && !batch) {
+      return res.status(404).json({ success: false, message: 'Batch not found' });
     }
 
     const user = await User.findById(req.user._id);
@@ -42,7 +78,19 @@ router.post('/initiate', authenticate, authorize('student'), async (req, res) =>
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const successUrl = `${baseUrl}/payments/success?tranId=${tranId}&method=${paymentMethod}`;
     const failUrl = `${baseUrl}/payments/fail?tranId=${tranId}&method=${paymentMethod}`;
-    const cancelUrl = `${baseUrl}/checkout?course=${courseSlug || batch.courseId.slug}&batch=${batchId}`;
+    const cancelUrl = isBook
+      ? `${baseUrl}/checkout?type=book&slug=${encodeURIComponent(itemSlug || '')}`
+      : `${baseUrl}/checkout?course=${courseSlug || batch.courseId.slug}&batch=${batchId}`;
+
+    let productName = isBook ? 'Book' : batch.courseId.title;
+    let productCategory = isBook ? 'Book' : 'Education';
+
+    let libraryItem = null;
+    if (isBook) {
+      libraryItem = itemId ? await LibraryItem.findById(itemId) : await LibraryItem.findOne({ slug: itemSlug });
+      if (!libraryItem) return res.status(404).json({ success: false, message: 'Book not found' });
+      productName = libraryItem.title;
+    }
 
     if (paymentMethod === 'sslcommerz') {
       const sslGateway = new SSLcommerzGateway();
@@ -57,20 +105,38 @@ router.post('/initiate', authenticate, authorize('student'), async (req, res) =>
         customerEmail: user.email,
         customerPhone: user.phone || '',
         customerAddress: '',
-        productName: batch.courseId.title,
-        productCategory: 'Education',
+        productName,
+        productCategory,
         productProfile: 'general'
       });
 
-      // Create pending enrollment
-      await Enrollment.create({
-        studentId: req.user._id,
-        batchId: batchId,
-        paymentStatus: 'pending',
-        paymentMethod: 'sslcommerz',
-        transactionId: tranId,
-        amountPaid: 0
-      });
+      if (isBook) {
+        await LibraryPurchase.findOneAndUpdate(
+          { userId: req.user._id, itemId: libraryItem._id },
+          {
+            $set: {
+              amount: amount,
+              currency: 'BDT',
+              paymentMethod: 'sslcommerz',
+              paymentStatus: 'pending',
+              transactionId: tranId,
+              approvedBy: null,
+              approvedAt: null
+            }
+          },
+          { upsert: true, new: true, runValidators: true }
+        );
+      } else {
+        // Create pending enrollment
+        await Enrollment.create({
+          studentId: req.user._id,
+          batchId: batchId,
+          paymentStatus: 'pending',
+          paymentMethod: 'sslcommerz',
+          transactionId: tranId,
+          amountPaid: 0
+        });
+      }
 
       res.json({
         success: true,
@@ -93,15 +159,33 @@ router.post('/initiate', authenticate, authorize('student'), async (req, res) =>
         callbackURL: successUrl
       });
 
-      // Create pending enrollment
-      await Enrollment.create({
-        studentId: req.user._id,
-        batchId: batchId,
-        paymentStatus: 'pending',
-        paymentMethod: 'bkash',
-        transactionId: tranId,
-        amountPaid: 0
-      });
+      if (isBook) {
+        await LibraryPurchase.findOneAndUpdate(
+          { userId: req.user._id, itemId: libraryItem._id },
+          {
+            $set: {
+              amount: amount,
+              currency: 'BDT',
+              paymentMethod: 'bkash',
+              paymentStatus: 'pending',
+              transactionId: tranId,
+              approvedBy: null,
+              approvedAt: null
+            }
+          },
+          { upsert: true, new: true, runValidators: true }
+        );
+      } else {
+        // Create pending enrollment
+        await Enrollment.create({
+          studentId: req.user._id,
+          batchId: batchId,
+          paymentStatus: 'pending',
+          paymentMethod: 'bkash',
+          transactionId: tranId,
+          amountPaid: 0
+        });
+      }
 
       res.json({
         success: true,
@@ -130,18 +214,24 @@ router.get('/confirm', authenticate, async (req, res) => {
     const { tranId, method } = req.query;
 
     const enrollment = await Enrollment.findOne({ transactionId: tranId });
-    if (!enrollment) {
-      return res.status(404).json({ success: false, message: 'Enrollment not found' });
+    const purchase = enrollment ? null : await LibraryPurchase.findOne({ transactionId: tranId });
+    if (!enrollment && !purchase) {
+      return res.status(404).json({ success: false, message: 'Purchase not found' });
     }
 
     // Verify payment with gateway (demo: mark as paid)
-    const batch = await Batch.findById(enrollment.batchId).populate('courseId');
-    const coursePrice = batch?.courseId?.discountPrice || batch?.courseId?.price || 0;
+    let amountToMark = 0;
+    if (enrollment) {
+      const batch = await Batch.findById(enrollment.batchId).populate('courseId');
+      amountToMark = batch?.courseId?.discountPrice || batch?.courseId?.price || 0;
+    } else if (purchase) {
+      amountToMark = purchase.amount || 0;
+    }
 
-    if (enrollment.paymentStatus !== 'paid') {
+    if (enrollment && enrollment.paymentStatus !== 'paid') {
       if (method === 'sslcommerz' || method === 'bkash') {
         enrollment.paymentStatus = 'paid';
-        enrollment.amountPaid = coursePrice;
+        enrollment.amountPaid = amountToMark;
         await enrollment.save();
 
         // Update batch enrolled count after successful payment (avoid double increment)
@@ -149,11 +239,21 @@ router.get('/confirm', authenticate, async (req, res) => {
       }
     }
 
+    if (purchase && purchase.paymentStatus !== 'paid') {
+      if (method === 'sslcommerz' || method === 'bkash') {
+        purchase.paymentStatus = 'paid';
+        purchase.approvedBy = null;
+        purchase.approvedAt = new Date();
+        await purchase.save();
+      }
+    }
+
     return res.json({
       success: true,
       message: 'Payment confirmed',
       data: {
-        enrollmentId: enrollment._id,
+        enrollmentId: enrollment?._id || null,
+        libraryPurchaseId: purchase?._id || null,
         redirectTo: '/student/dashboard?success=payment_completed'
       }
     });
@@ -171,9 +271,14 @@ router.get('/confirm-fail', authenticate, async (req, res) => {
   try {
     const { tranId } = req.query;
     const enrollment = await Enrollment.findOne({ transactionId: tranId });
+    const purchase = enrollment ? null : await LibraryPurchase.findOne({ transactionId: tranId });
     if (enrollment && enrollment.paymentStatus !== 'paid') {
       enrollment.paymentStatus = 'failed';
       await enrollment.save();
+    }
+    if (purchase && purchase.paymentStatus !== 'paid') {
+      purchase.paymentStatus = 'failed';
+      await purchase.save();
     }
     return res.json({
       success: true,
@@ -192,15 +297,16 @@ router.get('/success', authenticate, async (req, res) => {
     const { tranId, method } = req.query;
 
     const enrollment = await Enrollment.findOne({ transactionId: tranId });
-    if (!enrollment) {
+    const purchase = enrollment ? null : await LibraryPurchase.findOne({ transactionId: tranId });
+    if (!enrollment && !purchase) {
       return res.redirect('/student/dashboard?error=payment_not_found');
     }
 
     // Verify payment with gateway
-    const batch = await Batch.findById(enrollment.batchId).populate('courseId');
+    const batch = enrollment ? await Batch.findById(enrollment.batchId).populate('courseId') : null;
     const coursePrice = batch?.courseId?.discountPrice || batch?.courseId?.price || 0;
 
-    if (enrollment.paymentStatus !== 'paid' && method === 'sslcommerz') {
+    if (enrollment && enrollment.paymentStatus !== 'paid' && method === 'sslcommerz') {
       const valId = req.query.val_id;
       // In production, verify with SSLcommerz API
       // For now, mark as paid
@@ -212,7 +318,7 @@ router.get('/success', authenticate, async (req, res) => {
       await Batch.findByIdAndUpdate(enrollment.batchId, {
         $inc: { enrolledCount: 1 }
       });
-    } else if (enrollment.paymentStatus !== 'paid' && method === 'bkash') {
+    } else if (enrollment && enrollment.paymentStatus !== 'paid' && method === 'bkash') {
       const paymentID = req.query.paymentID;
       // In production, verify with bKash API
       enrollment.paymentStatus = 'paid';
@@ -223,6 +329,12 @@ router.get('/success', authenticate, async (req, res) => {
       await Batch.findByIdAndUpdate(enrollment.batchId, {
         $inc: { enrolledCount: 1 }
       });
+    }
+
+    if (purchase && purchase.paymentStatus !== 'paid' && (method === 'sslcommerz' || method === 'bkash')) {
+      purchase.paymentStatus = 'paid';
+      purchase.approvedAt = new Date();
+      await purchase.save();
     }
 
     res.redirect('/student/dashboard?success=payment_completed');

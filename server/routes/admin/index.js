@@ -297,6 +297,7 @@ router.use('/upload', require('./upload'));
 router.use('/header', require('./header'));
 router.use('/categories', require('./categories'));
 router.use('/certificates', require('./certificates'));
+router.use('/payment-gateways', require('./payment-gateways'));
 
 // Log route loading for debugging
 console.log('✅ Admin routes loaded: homepage, settings, upload, header, categories, certificates');

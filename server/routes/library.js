@@ -196,8 +196,10 @@ router.post('/:slug/purchase', authenticate, async (req, res) => {
     }
 
     const { paymentMethod = 'manual', transactionId = '', phoneNumber = '', note = '' } = req.body || {};
-    if (!transactionId || !phoneNumber) {
-      return res.status(400).json({ success: false, message: 'Transaction ID and phone number are required.' });
+    if (paymentMethod !== 'pay_later') {
+      if (!transactionId || !phoneNumber) {
+        return res.status(400).json({ success: false, message: 'Transaction ID and phone number are required.' });
+      }
     }
 
     const purchase = await LibraryPurchase.findOneAndUpdate(
@@ -207,8 +209,8 @@ router.post('/:slug/purchase', authenticate, async (req, res) => {
           amount: price,
           currency: item.currency || 'BDT',
           paymentMethod,
-          transactionId,
-          phoneNumber,
+          transactionId: paymentMethod === 'pay_later' ? '' : transactionId,
+          phoneNumber: paymentMethod === 'pay_later' ? '' : phoneNumber,
           note,
           paymentStatus: 'pending',
           approvedBy: null,
