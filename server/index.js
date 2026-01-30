@@ -47,23 +47,25 @@ app.options('*', cors(corsOptions));
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginEmbedderPolicy: false,
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      imgSrc: [
-        "'self'",
-        "data:",
-        "blob:",
-        "http://localhost:5000",
-        "http://localhost:3000",
-        "https://api.rmgstar.com",
-        "https://rmgstar.com",
-        "https://admin.rmgstar.com"
-      ],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-    },
-  },
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          imgSrc: [
+            "'self'",
+            "data:",
+            "blob:",
+            "http://localhost:5000",
+            "http://localhost:3000",
+            "https://api.rmgstar.com",
+            "https://rmgstar.com",
+            "https://admin.rmgstar.com"
+          ],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          frameSrc: ["'self'", "https://api.rmgstar.com", "https://rmgstar.com"],
+          frameAncestors: ["'self'", "https://rmgstar.com", "https://admin.rmgstar.com"],
+        },
+      },
 }));
 
 // Rate limiting

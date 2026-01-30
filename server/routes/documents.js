@@ -196,10 +196,23 @@ router.get('/:slug/download', optionalAuth, async (req, res) => {
 
     const filePath = path.join(__dirname, '../uploads/documents', path.basename(document.fileUrl));
     if (fs.existsSync(filePath)) {
-      return res.download(filePath, document.title + path.extname(document.fileUrl));
+      // For PDFs, set proper headers for viewing
+      if (document.fileType === 'pdf') {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${document.title}.pdf"`);
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        return res.sendFile(filePath);
+      } else {
+        // For other files, force download
+        return res.download(filePath, document.title + path.extname(document.fileUrl));
+      }
     }
 
-    res.redirect(document.fileUrl);
+    // If file doesn't exist locally, redirect to URL
+    const fullUrl = document.fileUrl.startsWith('http') 
+      ? document.fileUrl 
+      : `${process.env.BASE_URL || 'http://localhost:5000'}${document.fileUrl}`;
+    res.redirect(fullUrl);
   } catch (error) {
     console.error('Error downloading document:', error);
     res.status(500).json({
