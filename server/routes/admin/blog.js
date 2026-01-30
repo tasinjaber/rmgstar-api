@@ -179,6 +179,67 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Approve post (change status from pending to published)
+router.post('/:id/approve', async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found'
+      });
+    }
+
+    post.status = 'published';
+    if (!post.publishedAt) {
+      post.publishedAt = new Date();
+    }
+    await post.save();
+
+    res.json({
+      success: true,
+      message: 'Post approved and published successfully',
+      data: { post }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to approve post',
+      error: error.message
+    });
+  }
+});
+
+// Reject post
+router.post('/:id/reject', async (req, res) => {
+  try {
+    const post = await Post.findByIdAndUpdate(
+      req.params.id,
+      { status: 'rejected' },
+      { new: true }
+    );
+
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Post rejected successfully',
+      data: { post }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reject post',
+      error: error.message
+    });
+  }
+});
+
 // Duplicate post
 router.post('/:id/duplicate', async (req, res) => {
   try {

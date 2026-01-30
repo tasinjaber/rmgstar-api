@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
-const { optionalAuth } = require('../middleware/auth');
+const { optionalAuth, authenticate, authorize } = require('../middleware/auth');
 
 // Get all published posts
 router.get('/', optionalAuth, async (req, res) => {
@@ -140,6 +140,84 @@ router.get('/:slug', optionalAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch post',
+      error: error.message
+    });
+  }
+});
+
+// Student submit blog post (requires authentication)
+router.post('/submit', authenticate, authorize('student'), async (req, res) => {
+  try {
+    const { title, content, excerpt, category, tags, thumbnail } = req.body;
+
+    if (!title || !content || !category) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title, content, and category are required'
+      });
+    }
+
+    // Generate slug
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+
+    // Check if slug exists
+    const existing = await Post.findOne({ slug });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: 'A post with this title already exists'
+      });
+    }
+
+    const post = new Post({
+      title,
+      slug,
+      content,
+      excerpt: excerpt || content.substring(0, 200) + '...',
+      category,
+      tags: Array.isArray(tags) ? tags : [],
+      thumbnail: thumbnail || '',
+      authorId: req.user._id,
+      status: 'pending' // Student submissions require admin approval
+    });
+
+    await post.save();
+
+    res.json({
+      success: true,
+      message: 'Blog post submitted successfully. Waiting for admin approval.',
+      data: { post }
+    });
+  } catch (error) {
+    console.error('Error submitting blog post:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit blog post',
+      error: error.message
+    });
+  }
+});
+
+// Get user's blog posts
+router.get('/user/my-posts', authenticate, async (req, res) => {
+  try {
+    const posts = await Post.find({ authorId: req.user._id })
+      .sort({ createdAt: -1 })
+      .select('-content')
+      .populate('authorId', 'name avatar');
+
+    res.json({
+      success: true,
+      data: { posts }
+    });
+  } catch (error) {
+    console.error('Error fetching user posts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch user posts',
       error: error.message
     });
   }
