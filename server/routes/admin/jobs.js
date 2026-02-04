@@ -98,12 +98,15 @@ router.post('/', async (req, res) => {
   try {
     const data = req.body || {};
 
-    // If companyId is provided, hydrate companyName/companyEmail
+    // If companyId is provided, hydrate companyName/companyEmail/companyLogo
     if (data.companyId) {
       const company = await JobCompany.findById(data.companyId);
       if (company) {
         data.companyName = company.name;
         data.companyEmail = company.email || '';
+        if (company.logo) {
+          data.companyLogo = company.logo;
+        }
       }
     }
 
@@ -163,6 +166,12 @@ router.put('/:id', async (req, res) => {
       if (company) {
         data.companyName = company.name;
         data.companyEmail = company.email || '';
+        if (company.logo) {
+          data.companyLogo = company.logo;
+        }
+        if (company.description) {
+          data.companyDescription = company.description;
+        }
       }
     }
     if (data.categoryId) {
