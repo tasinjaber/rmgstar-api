@@ -56,6 +56,13 @@ router.get('/:id', async (req, res) => {
     if (!job) {
       return res.status(404).json({ success: false, message: 'Job not found' });
     }
+    // Populate company logo if companyId exists
+    if (job.companyId) {
+      const company = await JobCompany.findById(job.companyId);
+      if (company && company.logo) {
+        job.companyLogo = company.logo;
+      }
+    }
     res.json({ success: true, data: { job } });
   } catch (error) {
     res.status(500).json({

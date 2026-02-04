@@ -228,12 +228,23 @@ router.get('/', optionalAuth, async (req, res) => {
 
     console.log('🔍 Query:', JSON.stringify(query, null, 2));
 
+    const JobCompany = require('../models/JobCompany');
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const jobs = await JobPost.find(query)
       .populate('employerId', 'name email')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
+
+    // Populate company logos for all jobs
+    for (let job of jobs) {
+      if (job.companyId) {
+        const company = await JobCompany.findById(job.companyId);
+        if (company && company.logo) {
+          job.companyLogo = company.logo;
+        }
+      }
+    }
 
     const total = await JobPost.countDocuments(query);
 
@@ -457,6 +468,7 @@ router.get('/', optionalAuth, async (req, res) => {
 // Get single job
 router.get('/:id', optionalAuth, async (req, res) => {
   try {
+    const JobCompany = require('../models/JobCompany');
     const job = await JobPost.findById(req.params.id)
       .populate('employerId', 'name email');
 
@@ -465,6 +477,14 @@ router.get('/:id', optionalAuth, async (req, res) => {
         success: false,
         message: 'Job not found'
       });
+    }
+
+    // Populate company logo if companyId exists
+    if (job.companyId) {
+      const company = await JobCompany.findById(job.companyId);
+      if (company && company.logo) {
+        job.companyLogo = company.logo;
+      }
     }
 
     res.json({
