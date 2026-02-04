@@ -1,8 +1,35 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+// Helper function to set CORS headers
+function setCORSHeaders(req, res) {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'https://rmgstar.com',
+    'https://www.rmgstar.com',
+    'https://admin.rmgstar.com',
+    'http://localhost:3000',
+    'http://localhost:3001'
+  ];
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  }
+}
+
 // Verify JWT token
 exports.authenticate = async (req, res, next) => {
+  // Set CORS headers before any response
+  setCORSHeaders(req, res);
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   try {
     const token = req.headers.authorization?.split(' ')[1] || 
                   req.cookies?.token;
@@ -37,6 +64,9 @@ exports.authenticate = async (req, res, next) => {
 // Check if user has required role(s)
 exports.authorize = (...roles) => {
   return (req, res, next) => {
+    // Set CORS headers before any response
+    setCORSHeaders(req, res);
+    
     if (!req.user) {
       return res.status(401).json({
         success: false,
