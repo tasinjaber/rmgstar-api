@@ -126,7 +126,15 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create document (admin)
-router.post('/', upload.single('file'), async (req, res) => {
+router.post('/', (req, res, next) => {
+  // Set CORS headers before multer processes the request
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  next();
+}, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({

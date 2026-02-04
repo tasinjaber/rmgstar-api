@@ -376,9 +376,18 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-// Error handling middleware
+// Error handling middleware - ensure CORS headers are set even on errors
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  // Set CORS headers before sending error response
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else if (process.env.NODE_ENV !== 'production') {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  }
+  
+  console.error('❌ Error:', err.stack || err.message);
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal server error',
