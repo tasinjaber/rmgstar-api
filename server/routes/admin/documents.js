@@ -219,6 +219,7 @@ router.post('/', (req, res, next) => {
 
     await document.save();
 
+    // CORS headers are already set by the middleware, but ensure they're present
     res.json({
       success: true,
       message: 'Document created successfully',
@@ -226,6 +227,7 @@ router.post('/', (req, res, next) => {
     });
   } catch (error) {
     console.error('Error creating document:', error);
+    // CORS headers are already set by the middleware
     res.status(500).json({
       success: false,
       message: 'Failed to create document',
