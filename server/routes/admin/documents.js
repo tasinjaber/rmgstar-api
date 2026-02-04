@@ -5,6 +5,32 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+// CORS middleware for document routes - must be before authentication
+router.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'https://rmgstar.com',
+    'https://www.rmgstar.com',
+    'https://admin.rmgstar.com',
+    'http://localhost:3000',
+    'http://localhost:3001'
+  ];
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  }
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+});
+
 // Configure multer for admin document uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
