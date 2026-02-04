@@ -129,9 +129,10 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Body parser
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parser - increased limits for large file uploads
+// Note: Multer handles multipart/form-data separately, but we increase these for other requests
+app.use(express.json({ limit: '5gb' }));
+app.use(express.urlencoded({ extended: true, limit: '5gb' }));
 
 // Static files - serve uploads directory
 const uploadsPath = path.join(__dirname, 'uploads');
@@ -374,6 +375,67 @@ app.get('/', (req, res) => {
       admin: '/api/admin'
     },
     timestamp: new Date().toISOString() 
+  });
+});
+
+// Error handler middleware - must be after all routes
+// Ensures CORS headers are included in error responses
+app.use((err, req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Set CORS headers for error responses
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  }
+  
+  // Handle specific error types
+  if (err.code === 'LIMIT_FILE_SIZE' || err.code === 'LIMIT_UNEXPECTED_FILE') {
+    console.error('❌ File upload error:', err.message);
+    return res.status(413).json({
+      success: false,
+      message: 'File too large. Maximum size: 5GB',
+      error: err.message
+    });
+  }
+  
+  if (err.type === 'entity.too.large') {
+    console.error('❌ Request entity too large:', err.message);
+    return res.status(413).json({
+      success: false,
+      message: 'Request entity too large. Maximum size: 5GB',
+      error: err.message
+    });
+  }
+  
+  // Log other errors
+  console.error('❌ Server error:', err);
+  
+  // Send error response
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal server error',
+    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.stack
+  });
+});
+
+// 404 handler - must be after all routes
+app.use((req, res) => {
+  const origin = req.headers.origin;
+  
+  // Set CORS headers for 404 responses
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  }
+  
+  res.status(404).json({
+    success: false,
+    message: 'API route not found'
   });
 });
 
