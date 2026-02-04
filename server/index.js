@@ -68,9 +68,21 @@ const corsOptions = {
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
 };
 
+// Apply CORS middleware
 app.use(cors(corsOptions));
+
 // Handle preflight requests globally (critical when Authorization header is present)
-app.options('*', cors(corsOptions));
+// Must be before routes
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  }
+  res.status(200).end();
+});
 
 // Security middleware - configure helmet to allow static files and images
 app.use(helmet({
