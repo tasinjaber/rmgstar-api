@@ -486,15 +486,27 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
     // Populate company logo and description if companyId exists
     if (job.companyId) {
+      console.log('🔍 Populating company for job:', job._id, 'companyId:', job.companyId);
       const company = await JobCompany.findById(job.companyId);
       if (company) {
+        console.log('✅ Company found:', {
+          name: company.name,
+          hasLogo: !!company.logo,
+          hasDescription: !!company.description,
+          logo: company.logo,
+          description: company.description?.substring(0, 50) + '...'
+        });
         if (company.logo) {
           job.companyLogo = company.logo;
         }
         if (company.description) {
           job.companyDescription = company.description;
         }
+      } else {
+        console.log('❌ Company not found for companyId:', job.companyId);
       }
+    } else {
+      console.log('⚠️ No companyId for job:', job._id);
     }
 
     res.json({
