@@ -220,7 +220,7 @@ router.post('/:id/duplicate', async (req, res) => {
     const data = {
       ...original,
       title: newTitle,
-      isActive: false,
+      isActive: true, // Auto activate duplicated jobs
     };
 
     const created = await JobPost.create(data);
