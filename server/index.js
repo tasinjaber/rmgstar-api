@@ -37,13 +37,20 @@ const allowedOrigins = [
 const corsOptions = {
   origin: (origin, callback) => {
     // In development, allow all origins
-    if (process.env.NODE_ENV !== 'production') return callback(null, true);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('✅ CORS: Development mode, allowing origin:', origin);
+      return callback(null, true);
+    }
     
     // Allow non-browser requests (no Origin header)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('✅ CORS: No origin header, allowing request');
+      return callback(null, true);
+    }
     
     // Always allow our production domains
     if (allowedOrigins.includes(origin)) {
+      console.log('✅ CORS: Allowed origin:', origin);
       return callback(null, true);
     }
     
@@ -55,17 +62,20 @@ const corsOptions = {
     
     // Check if origin is in allowed list
     if (corsOrigins.includes(origin)) {
+      console.log('✅ CORS: Allowed origin from CORS_ORIGINS:', origin);
       return callback(null, true);
     }
     
     // Reject unknown origins
     console.warn('❌ CORS blocked origin:', origin);
+    console.warn('   Allowed origins:', allowedOrigins);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
 };
 
 // Apply CORS middleware
