@@ -195,6 +195,19 @@ router.put('/:id', async (req, res) => {
         message: 'Job not found'
       });
     }
+    
+    // Populate company logo and description in response
+    if (job.companyId) {
+      const company = await JobCompany.findById(job.companyId);
+      if (company) {
+        if (company.logo) {
+          job.companyLogo = company.logo;
+        }
+        if (company.description) {
+          job.companyDescription = company.description;
+        }
+      }
+    }
 
     res.json({
       success: true,
