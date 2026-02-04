@@ -237,7 +237,13 @@ router.get('/', optionalAuth, async (req, res) => {
       .limit(parseInt(limit));
 
     // Populate company logos and descriptions for all jobs
-    for (let job of jobs) {
+    // Convert to plain objects to ensure dynamically added fields are included
+    const jobsWithCompany = jobs.map(job => {
+      const jobObj = job.toObject ? job.toObject() : job;
+      return jobObj;
+    });
+    
+    for (let job of jobsWithCompany) {
       if (job.companyId) {
         const company = await JobCompany.findById(job.companyId);
         if (company) {
@@ -258,7 +264,7 @@ router.get('/', optionalAuth, async (req, res) => {
     res.json({
       success: true,
       data: {
-        jobs,
+        jobs: jobsWithCompany, // Use jobsWithCompany instead of jobs to include company logo/description
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
