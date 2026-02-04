@@ -35,7 +35,7 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: (process.env.UPLOAD_MAX_DOC_MB || 50) * 1024 * 1024
+    fileSize: (process.env.UPLOAD_MAX_DOC_MB || 5000) * 1024 * 1024 // 5GB default, or set via env
   }
 });
 
