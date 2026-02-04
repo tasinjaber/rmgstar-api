@@ -26,6 +26,21 @@ router.get('/', async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
+    // Populate company logos and descriptions for all jobs
+    for (let job of jobs) {
+      if (job.companyId) {
+        const company = await JobCompany.findById(job.companyId);
+        if (company) {
+          if (company.logo) {
+            job.companyLogo = company.logo;
+          }
+          if (company.description) {
+            job.companyDescription = company.description;
+          }
+        }
+      }
+    }
+
     const total = await JobPost.countDocuments(query);
 
     res.json({
@@ -56,11 +71,16 @@ router.get('/:id', async (req, res) => {
     if (!job) {
       return res.status(404).json({ success: false, message: 'Job not found' });
     }
-    // Populate company logo if companyId exists
+    // Populate company logo and description if companyId exists
     if (job.companyId) {
       const company = await JobCompany.findById(job.companyId);
-      if (company && company.logo) {
-        job.companyLogo = company.logo;
+      if (company) {
+        if (company.logo) {
+          job.companyLogo = company.logo;
+        }
+        if (company.description) {
+          job.companyDescription = company.description;
+        }
       }
     }
     res.json({ success: true, data: { job } });

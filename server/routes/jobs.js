@@ -236,12 +236,17 @@ router.get('/', optionalAuth, async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
-    // Populate company logos for all jobs
+    // Populate company logos and descriptions for all jobs
     for (let job of jobs) {
       if (job.companyId) {
         const company = await JobCompany.findById(job.companyId);
-        if (company && company.logo) {
-          job.companyLogo = company.logo;
+        if (company) {
+          if (company.logo) {
+            job.companyLogo = company.logo;
+          }
+          if (company.description) {
+            job.companyDescription = company.description;
+          }
         }
       }
     }
@@ -479,11 +484,16 @@ router.get('/:id', optionalAuth, async (req, res) => {
       });
     }
 
-    // Populate company logo if companyId exists
+    // Populate company logo and description if companyId exists
     if (job.companyId) {
       const company = await JobCompany.findById(job.companyId);
-      if (company && company.logo) {
-        job.companyLogo = company.logo;
+      if (company) {
+        if (company.logo) {
+          job.companyLogo = company.logo;
+        }
+        if (company.description) {
+          job.companyDescription = company.description;
+        }
       }
     }
 
