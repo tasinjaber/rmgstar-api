@@ -132,12 +132,56 @@ router.get('/:id', async (req, res) => {
 router.post('/', (req, res, next) => {
   // Set CORS headers before multer processes the request
   const origin = req.headers.origin;
-  if (origin) {
+  const allowedOrigins = [
+    'https://rmgstar.com',
+    'https://www.rmgstar.com',
+    'https://admin.rmgstar.com',
+    'http://localhost:3000',
+    'http://localhost:3001'
+  ];
+  
+  if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   }
   next();
-}, upload.single('file'), async (req, res) => {
+}, upload.single('file'), (err, req, res, next) => {
+  // Handle Multer errors (file size, etc.)
+  if (err) {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      'https://rmgstar.com',
+      'https://www.rmgstar.com',
+      'https://admin.rmgstar.com',
+      'http://localhost:3000',
+      'http://localhost:3001'
+    ];
+    
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    }
+    
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        success: false,
+        message: 'File too large. Maximum size: 5GB',
+        error: err.message
+      });
+    }
+    
+    return res.status(400).json({
+      success: false,
+      message: 'File upload error',
+      error: err.message
+    });
+  }
+  next();
+}, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
