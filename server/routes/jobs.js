@@ -496,12 +496,22 @@ router.get('/:id', optionalAuth, async (req, res) => {
           logo: company.logo,
           description: company.description?.substring(0, 50) + '...'
         });
+        // Convert to plain object to ensure fields are included
+        const jobObj = job.toObject ? job.toObject() : job;
         if (company.logo) {
-          job.companyLogo = company.logo;
+          jobObj.companyLogo = company.logo;
         }
         if (company.description) {
-          job.companyDescription = company.description;
+          jobObj.companyDescription = company.description;
         }
+        console.log('📤 Sending job with company data:', {
+          companyLogo: jobObj.companyLogo,
+          companyDescription: jobObj.companyDescription ? jobObj.companyDescription.substring(0, 50) + '...' : undefined
+        });
+        return res.json({
+          success: true,
+          data: { job: jobObj }
+        });
       } else {
         console.log('❌ Company not found for companyId:', job.companyId);
       }
@@ -509,9 +519,11 @@ router.get('/:id', optionalAuth, async (req, res) => {
       console.log('⚠️ No companyId for job:', job._id);
     }
 
+    // Convert to plain object before sending
+    const jobObj = job.toObject ? job.toObject() : job;
     res.json({
       success: true,
-      data: { job }
+      data: { job: jobObj }
     });
   } catch (error) {
     res.status(500).json({
