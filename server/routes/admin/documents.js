@@ -258,9 +258,43 @@ router.post('/', (req, res, next) => {
 });
 
 // Update document
-router.put('/:id', async (req, res) => {
+router.put('/:id', upload.single('file'), (err, req, res, next) => {
+  // Handle Multer errors (file size, etc.)
+  if (err) {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      'https://rmgstar.com',
+      'https://www.rmgstar.com',
+      'https://admin.rmgstar.com',
+      'http://localhost:3000',
+      'http://localhost:3001'
+    ];
+    
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    }
+    
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        success: false,
+        message: 'File too large. Maximum size: 5GB',
+        error: err.message
+      });
+    }
+    
+    return res.status(400).json({
+      success: false,
+      message: 'File upload error',
+      error: err.message
+    });
+  }
+  next();
+}, async (req, res) => {
   try {
-    const { title, description, category, author, publishDate } = req.body;
+    const { title, description, category, author } = req.body;
 
     const document = await Document.findById(req.params.id);
     if (!document) {
@@ -286,10 +320,33 @@ router.put('/:id', async (req, res) => {
       document.slug = slug;
     }
 
-    if (description !== undefined) document.description = description;
+    if (description !== undefined) document.description = description || '';
     if (category) document.category = category;
     if (author) document.author = author;
-    if (publishDate) document.publishDate = new Date(publishDate);
+
+    // Handle file upload if new file is provided
+    if (req.file) {
+      // Delete old file if exists
+      if (document.fileUrl) {
+        const oldFilePath = path.join(__dirname, '../../', document.fileUrl);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+
+      // Determine file type
+      const ext = path.extname(req.file.originalname).toLowerCase().replace('.', '');
+      let fileType = 'other';
+      if (['pdf'].includes(ext)) fileType = 'pdf';
+      else if (['xls', 'xlsx'].includes(ext)) fileType = 'excel';
+      else if (['doc', 'docx'].includes(ext)) fileType = 'doc';
+      else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) fileType = 'image';
+
+      document.fileUrl = `/uploads/documents/${req.file.filename}`;
+      document.fileType = fileType;
+      document.fileSize = req.file.size;
+      document.thumbnail = req.file.mimetype.startsWith('image/') ? `/uploads/documents/${req.file.filename}` : '';
+    }
 
     await document.save();
 
