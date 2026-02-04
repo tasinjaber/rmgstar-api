@@ -24,19 +24,48 @@ const corsOrigins = (process.env.CORS_ORIGINS || process.env.CLIENT_URL || '')
   .map(s => s.trim())
   .filter(Boolean);
 
+// Always allow these origins in production
+const allowedOrigins = [
+  'https://rmgstar.com',
+  'https://www.rmgstar.com',
+  'https://admin.rmgstar.com',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  ...corsOrigins
+];
+
 const corsOptions = {
   origin: (origin, callback) => {
+    // In development, allow all origins
     if (process.env.NODE_ENV !== 'production') return callback(null, true);
-    // allow non-browser requests (no Origin)
+    
+    // Allow non-browser requests (no Origin header)
     if (!origin) return callback(null, true);
+    
+    // Always allow our production domains
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
     // If allowlist is not configured, fail open (prevents production breakage due to missing env)
-    // You can still restrict by setting CORS_ORIGINS / CLIENT_URL.
-    if (corsOrigins.length === 0) return callback(null, true);
-    return callback(null, corsOrigins.includes(origin));
+    if (corsOrigins.length === 0) {
+      console.warn('⚠️  CORS_ORIGINS not set, allowing all origins');
+      return callback(null, true);
+    }
+    
+    // Check if origin is in allowed list
+    if (corsOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Reject unknown origins
+    console.warn('❌ CORS blocked origin:', origin);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
 };
 
 app.use(cors(corsOptions));
