@@ -90,6 +90,25 @@ router.post('/', async (req, res) => {
       if (sc) data.subCategory = sc.name;
     }
 
+    // Set default employerId if not provided (optional field now)
+    if (!data.employerId) {
+      // Use the admin user creating the job as employer
+      data.employerId = req.user._id;
+    }
+
+    // Ensure required fields have defaults if missing
+    if (!data.type && data.employmentStatus) {
+      // Map employmentStatus to type enum
+      const typeMap = {
+        'Full Time': 'Full-time',
+        'Part Time': 'Part-time',
+        'Contractual': 'Contract',
+        'Internship': 'Internship',
+        'Freelance': 'Full-time' // Default fallback
+      };
+      data.type = typeMap[data.employmentStatus] || 'Full-time';
+    }
+
     const job = await JobPost.create(data);
 
     res.status(201).json({
@@ -98,6 +117,7 @@ router.post('/', async (req, res) => {
       data: { job }
     });
   } catch (error) {
+    console.error('Job creation error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create job',
