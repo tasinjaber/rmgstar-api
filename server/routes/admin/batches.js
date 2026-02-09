@@ -23,10 +23,9 @@ router.get('/:id', async (req, res) => {
 // Get all batches
 router.get('/', async (req, res) => {
   try {
-    const { page = 1, limit = 20, courseId, status } = req.query;
+    const { page = 1, limit = 20, status } = req.query;
     const query = {};
 
-    if (courseId) query.courseId = courseId;
     if (status) query.status = status;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
