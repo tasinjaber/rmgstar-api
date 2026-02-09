@@ -24,13 +24,19 @@ router.put('/', async (req, res) => {
 
     // shallow merge for known keys
     if (payload.sslcommerz) {
-      settings.sslcommerz = { ...settings.sslcommerz.toObject?.() , ...payload.sslcommerz };
+      settings.sslcommerz = { ...(settings.sslcommerz?.toObject?.() || {}), ...payload.sslcommerz };
     }
     if (payload.bkash) {
-      settings.bkash = { ...settings.bkash.toObject?.() , ...payload.bkash };
+      settings.bkash = { ...(settings.bkash?.toObject?.() || {}), ...payload.bkash };
+    }
+    if (payload.nagad) {
+      settings.nagad = { ...(settings.nagad?.toObject?.() || {}), ...payload.nagad };
+    }
+    if (payload.rocket) {
+      settings.rocket = { ...(settings.rocket?.toObject?.() || {}), ...payload.rocket };
     }
     if (payload.payLater) {
-      settings.payLater = { ...settings.payLater.toObject?.() , ...payload.payLater };
+      settings.payLater = { ...(settings.payLater?.toObject?.() || {}), ...payload.payLater };
     }
 
     await settings.save();

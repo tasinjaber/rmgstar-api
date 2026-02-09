@@ -30,7 +30,7 @@ router.get('/methods', async (req, res) => {
           pay_later: { enabled: settings.payLater?.enabled !== false },
           sslcommerz: { enabled: !!settings.sslcommerz?.enabled },
           bkash: { 
-            enabled: !!settings.bkash?.enabled,
+            enabled: !!settings.bkash?.personalEnabled || !!settings.bkash?.enabled,
             accountNumber: settings.bkash?.accountNumber || '',
             instructions: settings.bkash?.instructions || ''
           },
