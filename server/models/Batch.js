@@ -4,12 +4,30 @@ const batchSchema = new mongoose.Schema({
   courseId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course',
-    required: true
+    required: false,
+    default: null
   },
   trainerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
+    required: false,
+    default: null
+  },
+  batchName: {
+    type: String,
     required: true
+  },
+  batchNumber: {
+    type: String,
+    required: true
+  },
+  weekWiseTimes: {
+    type: Map,
+    of: {
+      startTime: String,
+      endTime: String
+    },
+    default: {}
   },
   startDate: {
     type: Date,
