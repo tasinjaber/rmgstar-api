@@ -53,6 +53,11 @@ const courseSchema = new mongoose.Schema({
     type: Number,
     min: 0
   },
+  batchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Batch',
+    default: null
+  },
   batchNumber: {
     type: String,
     default: '1'
