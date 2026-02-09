@@ -65,7 +65,18 @@ router.get('/', async (req, res) => {
 // Create batch
 router.post('/', async (req, res) => {
   try {
-    const batch = await Batch.create(req.body);
+    const batchData = { ...req.body };
+    
+    // Convert weekWiseTimes object to Map if provided
+    if (batchData.weekWiseTimes && typeof batchData.weekWiseTimes === 'object' && !(batchData.weekWiseTimes instanceof Map)) {
+      const weekWiseTimesMap = new Map();
+      Object.entries(batchData.weekWiseTimes).forEach(([day, times]) => {
+        weekWiseTimesMap.set(day, times);
+      });
+      batchData.weekWiseTimes = weekWiseTimesMap;
+    }
+    
+    const batch = await Batch.create(batchData);
 
     res.status(201).json({
       success: true,
@@ -84,9 +95,20 @@ router.post('/', async (req, res) => {
 // Update batch
 router.put('/:id', async (req, res) => {
   try {
+    const batchData = { ...req.body };
+    
+    // Convert weekWiseTimes object to Map if provided
+    if (batchData.weekWiseTimes && typeof batchData.weekWiseTimes === 'object' && !(batchData.weekWiseTimes instanceof Map)) {
+      const weekWiseTimesMap = new Map();
+      Object.entries(batchData.weekWiseTimes).forEach(([day, times]) => {
+        weekWiseTimesMap.set(day, times);
+      });
+      batchData.weekWiseTimes = weekWiseTimesMap;
+    }
+    
     const batch = await Batch.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      batchData,
       { new: true, runValidators: true }
     );
 
