@@ -105,12 +105,21 @@ router.get('/dashboard', async (req, res) => {
     ]);
 
     // Get top 5 batches (by enrollment count)
-    const topBatches = await Batch.find()
-      .populate('courseId', 'title thumbnailImage')
-      .populate('trainerId', 'name email')
+    // Note: Batch no longer has courseId, need to find courses with this batchId
+    const topBatchesRaw = await Batch.find()
       .sort({ enrolledCount: -1 })
       .limit(5)
-      .select('courseId trainerId startDate endDate enrolledCount seatLimit status mode');
+      .select('batchName batchNumber startDate endDate enrolledCount seatLimit status mode')
+      .lean();
+    
+    // Find courses for each batch
+    const topBatches = await Promise.all(topBatchesRaw.map(async (batch) => {
+      const course = await Course.findOne({ batchId: batch._id }).select('title thumbnailImage').lean();
+      return {
+        ...batch,
+        courseId: course || null
+      };
+    }));
 
     // Get top 5 jobs (by application count)
     const topJobs = await JobPost.aggregate([
@@ -138,15 +147,28 @@ router.get('/dashboard', async (req, res) => {
     ]);
 
     // Get top 5 enrollments (recent)
-    const topEnrollments = await Enrollment.find()
+    const topEnrollmentsRaw = await Enrollment.find()
       .populate('studentId', 'name email')
-      .populate({
-        path: 'batchId',
-        populate: { path: 'courseId', select: 'title' }
-      })
+      .populate('batchId', 'batchName batchNumber')
       .sort({ createdAt: -1 })
       .limit(5)
-      .select('studentId batchId paymentStatus enrolledAt amountPaid');
+      .select('studentId batchId paymentStatus enrolledAt amountPaid')
+      .lean();
+    
+    // Find courses for each enrollment's batch
+    const topEnrollments = await Promise.all(topEnrollmentsRaw.map(async (enrollment) => {
+      if (enrollment.batchId && enrollment.batchId._id) {
+        const course = await Course.findOne({ batchId: enrollment.batchId._id }).select('title').lean();
+        return {
+          ...enrollment,
+          batchId: {
+            ...enrollment.batchId,
+            courseId: course || null
+          }
+        };
+      }
+      return enrollment;
+    }));
 
     // Get top 5 applications (recent)
     const topApplications = await JobApplication.find()

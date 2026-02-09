@@ -29,7 +29,21 @@ router.get('/methods', async (req, res) => {
         methods: {
           pay_later: { enabled: settings.payLater?.enabled !== false },
           sslcommerz: { enabled: !!settings.sslcommerz?.enabled },
-          bkash: { enabled: !!settings.bkash?.enabled }
+          bkash: { 
+            enabled: !!settings.bkash?.enabled,
+            accountNumber: settings.bkash?.accountNumber || '',
+            instructions: settings.bkash?.instructions || ''
+          },
+          nagad: { 
+            enabled: !!settings.nagad?.enabled,
+            accountNumber: settings.nagad?.accountNumber || '',
+            instructions: settings.nagad?.instructions || ''
+          },
+          rocket: { 
+            enabled: !!settings.rocket?.enabled,
+            accountNumber: settings.rocket?.accountNumber || '',
+            instructions: settings.rocket?.instructions || ''
+          }
         }
       }
     });
