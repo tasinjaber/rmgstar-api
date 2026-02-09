@@ -68,11 +68,16 @@ router.get('/:slug', async (req, res) => {
       });
     }
 
-    // Get batches for this course
-    const batches = await Batch.find({ courseId: course._id })
-      .populate('trainerId', 'name email avatar')
-      .sort({ startDate: 1 })
-      .lean();
+    // Get batch for this course (course has batchId field)
+    let batches = []
+    if (course.batchId) {
+      const batch = await Batch.findById(course.batchId)
+        .sort({ startDate: 1 })
+        .lean();
+      if (batch) {
+        batches = [batch]
+      }
+    }
 
     res.json({
       success: true,
