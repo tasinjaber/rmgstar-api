@@ -6,9 +6,7 @@ const Course = require('../../models/Course');
 // Get single batch
 router.get('/:id', async (req, res) => {
   try {
-    const batch = await Batch.findById(req.params.id)
-      .populate('courseId', 'title')
-      .populate('trainerId', 'name');
+    const batch = await Batch.findById(req.params.id);
     if (!batch) {
       return res.status(404).json({ success: false, message: 'Batch not found' });
     }
@@ -33,8 +31,6 @@ router.get('/', async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const batches = await Batch.find(query)
-      .populate('courseId', 'title')
-      .populate('trainerId', 'name')
       .sort({ startDate: 1 })
       .skip(skip)
       .limit(parseInt(limit));

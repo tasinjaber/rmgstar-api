@@ -1,18 +1,6 @@
 const mongoose = require('mongoose');
 
 const batchSchema = new mongoose.Schema({
-  courseId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course',
-    required: false,
-    default: null
-  },
-  trainerId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: false,
-    default: null
-  },
   batchName: {
     type: String,
     required: true
@@ -81,10 +69,9 @@ const batchSchema = new mongoose.Schema({
   timestamps: true
 });
 
-batchSchema.index({ courseId: 1 });
-batchSchema.index({ trainerId: 1 });
 batchSchema.index({ startDate: 1 });
 batchSchema.index({ status: 1 });
+batchSchema.index({ batchNumber: 1 });
 
 module.exports = mongoose.model('Batch', batchSchema);
 
