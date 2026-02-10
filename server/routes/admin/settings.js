@@ -13,6 +13,7 @@ router.get('/', async (req, res) => {
         success: true,
         data: {
           siteName: 'RMG Training Platform',
+          siteTitle: 'RMG Training Platform',
           primaryColor: '#2563eb',
           contactEmail: 'info@platform.com',
           contactPhone: '+880-1234567890',
@@ -33,6 +34,7 @@ router.get('/', async (req, res) => {
       success: true,
       data: {
         siteName: 'RMG Training Platform',
+        siteTitle: 'RMG Training Platform',
         primaryColor: '#2563eb',
         contactEmail: 'info@platform.com',
         contactPhone: '+880-1234567890',
@@ -61,6 +63,7 @@ router.put('/', async (req, res) => {
     // Prepare update data
     const updateData = {
       siteName: req.body.siteName || 'RMG Training Platform',
+      siteTitle: req.body.siteTitle || req.body.siteName || 'RMG Training Platform',
       primaryColor: req.body.primaryColor || '#2563eb',
       contactEmail: req.body.contactEmail || 'info@platform.com',
       contactPhone: req.body.contactPhone || '+880-1234567890',

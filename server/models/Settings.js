@@ -5,6 +5,10 @@ const settingsSchema = new mongoose.Schema({
     type: String,
     default: 'RMG Training Platform'
   },
+  siteTitle: {
+    type: String,
+    default: 'RMG Training Platform'
+  },
   primaryColor: {
     type: String,
     default: '#2563eb'
@@ -32,6 +36,7 @@ settingsSchema.statics.getSettings = async function() {
     // Create default settings
     settings = await this.create({
       siteName: 'RMG Training Platform',
+      siteTitle: 'RMG Training Platform',
       primaryColor: '#2563eb',
       contactEmail: 'info@platform.com',
       contactPhone: '+880-1234567890',
