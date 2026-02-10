@@ -38,7 +38,8 @@ router.get('/', authenticate, async (req, res) => {
             ],
             buttons: [],
             showLoginButton: true,
-            showRegisterButton: true
+            showRegisterButton: true,
+            showVerifyCertificateButton: true
           }
         }
       });
@@ -73,7 +74,8 @@ router.get('/', authenticate, async (req, res) => {
           ],
           buttons: [],
           showLoginButton: true,
-          showRegisterButton: true
+          showRegisterButton: true,
+          showVerifyCertificateButton: true
         }
       }
     });
@@ -118,7 +120,8 @@ router.put('/', async (req, res) => {
       availableMenuItems: req.body.availableMenuItems || [],
       buttons: req.body.buttons || [],
       showLoginButton: req.body.showLoginButton !== undefined ? req.body.showLoginButton : true,
-      showRegisterButton: req.body.showRegisterButton !== undefined ? req.body.showRegisterButton : true
+      showRegisterButton: req.body.showRegisterButton !== undefined ? req.body.showRegisterButton : true,
+      showVerifyCertificateButton: req.body.showVerifyCertificateButton !== undefined ? req.body.showVerifyCertificateButton : true
     };
     
     console.log('📝 Logo URL to save:', updateData.logo);

@@ -31,7 +31,8 @@ router.get('/', async (req, res) => {
           ],
           buttons: [],
           showLoginButton: true,
-          showRegisterButton: true
+          showRegisterButton: true,
+          showVerifyCertificateButton: true
         }
       }
     });

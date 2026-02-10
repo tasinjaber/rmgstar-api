@@ -65,6 +65,10 @@ const headerSettingsSchema = new mongoose.Schema({
   showRegisterButton: {
     type: Boolean,
     default: true
+  },
+  showVerifyCertificateButton: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true
@@ -97,7 +101,8 @@ headerSettingsSchema.statics.getSettings = async function() {
       ],
       buttons: [],
       showLoginButton: true,
-      showRegisterButton: true
+      showRegisterButton: true,
+      showVerifyCertificateButton: true
     });
   }
   return settings;

@@ -354,6 +354,7 @@ app.use('/api/categories', require('./routes/categories'));
 app.use('/api/stats', require('./routes/stats'));
 app.use('/api/trainers', require('./routes/trainers'));
 app.use('/api/certificates', require('./routes/certificates'));
+app.use('/api/settings', require('./routes/settings'));
 app.use('/api/admin', require('./routes/admin'));
 
 // Root route - API info
