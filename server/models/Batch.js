@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const batchSchema = new mongoose.Schema({
+  courseId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course',
+    default: null
+  },
   batchName: {
     type: String,
     required: true
@@ -64,11 +69,17 @@ const batchSchema = new mongoose.Schema({
   venue: {
     type: String,
     default: '' // For offline/hybrid batches
+  },
+  trainerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, {
   timestamps: true
 });
 
+batchSchema.index({ courseId: 1 });
 batchSchema.index({ startDate: 1 });
 batchSchema.index({ status: 1 });
 batchSchema.index({ batchNumber: 1 });

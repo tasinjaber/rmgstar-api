@@ -5,7 +5,7 @@ const Enrollment = require('../../models/Enrollment');
 // Get all enrollments
 router.get('/', async (req, res) => {
   try {
-    const { courseId, batchId, paymentStatus, page = 1, limit = 20 } = req.query;
+    const { courseId, batchId, paymentStatus, category, startDate, page = 1, limit = 20 } = req.query;
     const query = {};
 
     if (courseId) {
@@ -15,13 +15,23 @@ router.get('/', async (req, res) => {
     }
     if (batchId) query.batchId = batchId;
     if (paymentStatus) query.paymentStatus = paymentStatus;
+    if (category) {
+      const Course = require('../../models/Course');
+      const Batch = require('../../models/Batch');
+      const courseIds = (await Course.find({ category }).select('_id')).map(c => c._id);
+      const batches = await Batch.find({ courseId: { $in: courseIds } }).select('_id');
+      query.batchId = { $in: batches.map(b => b._id) };
+    }
+    if (startDate) {
+      query.createdAt = { $gte: new Date(startDate) };
+    }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const enrollments = await Enrollment.find(query)
       .populate('studentId', 'name email phone')
       .populate({
         path: 'batchId',
-        select: 'startDate endDate startTime endTime mode seatLimit enrolledCount status courseId',
+        select: 'batchName batchNumber startDate endDate startTime endTime mode seatLimit enrolledCount status courseId',
         populate: {
           path: 'courseId',
           select: 'title slug thumbnailImage shortDescription price discountPrice'
@@ -61,6 +71,7 @@ router.get('/:id', async (req, res) => {
       .populate('studentId', 'name email phone')
       .populate({
         path: 'batchId',
+        select: 'batchName batchNumber startDate endDate mode courseId',
         populate: {
           path: 'courseId',
           select: 'title slug thumbnailImage shortDescription price discountPrice'
@@ -129,9 +140,10 @@ router.put('/:id', async (req, res) => {
       .populate('studentId', 'name email phone')
       .populate({
         path: 'batchId',
+        select: 'batchName batchNumber startDate mode courseId',
         populate: {
           path: 'courseId',
-          select: 'title slug thumbnailImage'
+          select: 'title slug thumbnailImage price discountPrice'
         }
       });
 
