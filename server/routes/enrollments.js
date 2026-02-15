@@ -88,10 +88,11 @@ router.post('/', authenticate, authorize('student'), async (req, res) => {
 router.get('/my-enrollments', authenticate, async (req, res) => {
   try {
     const Course = require('../models/Course');
-    
+
     const enrollments = await Enrollment.find({ studentId: req.user._id })
       .populate({
         path: 'batchId',
+        select: 'batchName batchNumber startDate mode courseId',
         populate: {
           path: 'courseId',
           select: 'title slug thumbnailImage shortDescription price discountPrice'
@@ -99,34 +100,33 @@ router.get('/my-enrollments', authenticate, async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
-    // Ensure courseId is properly populated
-    const enrollmentsWithCourse = await Promise.all(
-      enrollments.map(async (enrollment) => {
-        if (enrollment.batchId) {
-          // Check if courseId needs to be populated
-          if (!enrollment.batchId.courseId || 
-              (typeof enrollment.batchId.courseId === 'object' && !enrollment.batchId.courseId.title) ||
-              typeof enrollment.batchId.courseId === 'string') {
-            
-            // Get courseId from batch
-            const batch = await Batch.findById(enrollment.batchId._id || enrollment.batchId);
-            if (batch && batch.courseId) {
-              const course = await Course.findById(batch.courseId)
-                .select('title slug thumbnailImage shortDescription price discountPrice')
-                .lean();
-              if (course) {
-                enrollment.batchId.courseId = course;
-              }
-            }
-          }
+    // Fallback: resolve course via Course.batchId when batch has no courseId
+    const batchIdsNeedingCourse = [...new Set(
+      enrollments
+        .filter(e => e.batchId && !e.batchId.courseId)
+        .map(e => e.batchId._id.toString())
+    )];
+    let coursesByBatchId = {};
+    if (batchIdsNeedingCourse.length > 0) {
+      const courses = await Course.find({
+        batchId: { $in: batchIdsNeedingCourse }
+      }).select('title slug thumbnailImage shortDescription price discountPrice batchId').lean();
+      courses.forEach(c => {
+        if (c.batchId) coursesByBatchId[c.batchId.toString()] = c;
+      });
+    }
+    enrollments.forEach(e => {
+      if (e.batchId && !e.batchId.courseId) {
+        const course = coursesByBatchId[e.batchId._id.toString()];
+        if (course) {
+          e.batchId.courseId = course;
         }
-        return enrollment;
-      })
-    );
+      }
+    });
 
     res.json({
       success: true,
-      data: { enrollments: enrollmentsWithCourse }
+      data: { enrollments }
     });
   } catch (error) {
     console.error('Error fetching enrollments:', error);
