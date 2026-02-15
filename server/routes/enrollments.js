@@ -1,7 +1,9 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Enrollment = require('../models/Enrollment');
 const Batch = require('../models/Batch');
+const Course = require('../models/Course');
 const { authenticate, authorize } = require('../middleware/auth');
 
 // Enroll in a batch
@@ -87,8 +89,6 @@ router.post('/', authenticate, authorize('student'), async (req, res) => {
 // Get user's enrollments
 router.get('/my-enrollments', authenticate, async (req, res) => {
   try {
-    const Course = require('../models/Course');
-
     const enrollments = await Enrollment.find({ studentId: req.user._id })
       .populate({
         path: 'batchId',
@@ -98,28 +98,35 @@ router.get('/my-enrollments', authenticate, async (req, res) => {
           select: 'title slug thumbnailImage shortDescription price discountPrice'
         }
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    // Fallback: resolve course via Course.batchId when batch has no courseId
+    // Fallback: resolve course via Course.batchId when batch has no course
     const batchIdsNeedingCourse = [...new Set(
       enrollments
-        .filter(e => e.batchId && !e.batchId.courseId)
-        .map(e => e.batchId._id.toString())
+        .filter(e => e.batchId && !(e.batchId.courseId && e.batchId.courseId.title))
+        .map(e => e.batchId && e.batchId._id ? e.batchId._id.toString() : null)
+        .filter(Boolean)
     )];
-    let coursesByBatchId = {};
+    const coursesByBatchId = {};
     if (batchIdsNeedingCourse.length > 0) {
-      const courses = await Course.find({
-        batchId: { $in: batchIdsNeedingCourse }
-      }).select('title slug thumbnailImage shortDescription price discountPrice batchId').lean();
+      const objectIds = batchIdsNeedingCourse.map(id => new mongoose.Types.ObjectId(id));
+      const courses = await Course.find({ batchId: { $in: objectIds } })
+        .select('title slug thumbnailImage shortDescription price discountPrice batchId')
+        .lean();
       courses.forEach(c => {
         if (c.batchId) coursesByBatchId[c.batchId.toString()] = c;
       });
     }
     enrollments.forEach(e => {
-      if (e.batchId && !e.batchId.courseId) {
-        const course = coursesByBatchId[e.batchId._id.toString()];
-        if (course) {
-          e.batchId.courseId = course;
+      if (e.batchId) {
+        const needCourse = !(e.batchId.courseId && e.batchId.courseId.title);
+        if (needCourse) {
+          const bid = e.batchId._id ? e.batchId._id.toString() : e.batchId.toString();
+          const course = coursesByBatchId[bid];
+          if (course) {
+            e.batchId.courseId = course;
+          }
         }
       }
     });
