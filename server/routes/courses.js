@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Course = require('../models/Course');
 const Batch = require('../models/Batch');
@@ -7,6 +8,27 @@ const CourseLesson = require('../models/CourseLesson');
 const LessonProgress = require('../models/LessonProgress');
 const Certificate = require('../models/Certificate');
 const { authenticate } = require('../middleware/auth');
+
+// Resolve course for enrollments when batch.courseId is missing (via Course.batchId)
+async function resolveEnrollmentCourses(enrollments) {
+  const batchIds = [...new Set(
+    enrollments
+      .filter(e => e.batchId && !(e.batchId.courseId && e.batchId.courseId._id))
+      .map(e => e.batchId._id ? e.batchId._id.toString() : null)
+      .filter(Boolean)
+  )];
+  if (batchIds.length === 0) return;
+  const objectIds = batchIds.map(id => new mongoose.Types.ObjectId(id));
+  const courses = await Course.find({ batchId: { $in: objectIds } }).select('_id batchId').lean();
+  const byBatchId = {};
+  courses.forEach(c => { if (c.batchId) byBatchId[c.batchId.toString()] = { _id: c._id }; });
+  enrollments.forEach(e => {
+    if (e.batchId && !(e.batchId.courseId && e.batchId.courseId._id)) {
+      const bid = e.batchId._id ? e.batchId._id.toString() : e.batchId.toString();
+      if (byBatchId[bid]) e.batchId.courseId = byBatchId[bid];
+    }
+  });
+}
 
 // Get all courses (public)
 router.get('/', async (req, res) => {
@@ -121,6 +143,7 @@ router.get('/:slug/player', authenticate, async (req, res) => {
         select: '_id'
       }
     });
+    await resolveEnrollmentCourses(enrollments);
 
     const enrollment = enrollments.find(e => 
       e.batchId && e.batchId.courseId && e.batchId.courseId._id.toString() === course._id.toString()
@@ -233,6 +256,7 @@ router.get('/:slug/enrollment-status', authenticate, async (req, res) => {
         populate: { path: 'courseId', select: '_id' }
       })
       .sort({ createdAt: -1 });
+    await resolveEnrollmentCourses(enrollments);
 
     const courseEnrollments = enrollments.filter(e =>
       e.batchId && e.batchId.courseId && e.batchId.courseId._id.toString() === course._id.toString()
@@ -286,6 +310,7 @@ router.get('/lessons/:lessonId', authenticate, async (req, res) => {
         select: '_id'
       }
     });
+    await resolveEnrollmentCourses(enrollments);
 
     const enrollment = enrollments.find(e => 
       e.batchId && e.batchId.courseId && e.batchId.courseId._id.toString() === lesson.courseId.toString()
@@ -338,6 +363,7 @@ router.get('/:slug/progress', authenticate, async (req, res) => {
         select: '_id'
       }
     });
+    await resolveEnrollmentCourses(enrollments);
 
     const enrollment = enrollments.find(e => 
       e.batchId && e.batchId.courseId && e.batchId.courseId._id.toString() === course._id.toString()
@@ -421,6 +447,7 @@ router.post('/:slug/lessons/:lessonId/complete', authenticate, async (req, res) 
         select: '_id'
       }
     });
+    await resolveEnrollmentCourses(enrollments);
 
     const enrollment = enrollments.find(e => 
       e.batchId && e.batchId.courseId && e.batchId.courseId._id.toString() === course._id.toString()
