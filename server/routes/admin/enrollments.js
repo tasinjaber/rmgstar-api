@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Enrollment = require('../../models/Enrollment');
 const Course = require('../../models/Course');
@@ -39,30 +40,37 @@ router.get('/', async (req, res) => {
       })
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean();
 
     const total = await Enrollment.countDocuments(query);
 
-    // Fallback: batches created before courseId existed — resolve course via Course.batchId
+    // Fallback: resolve course via Course.batchId when batch has no courseId
     const batchIdsNeedingCourse = [...new Set(
       enrollments
-        .filter(e => e.batchId && !e.batchId.courseId)
-        .map(e => e.batchId._id.toString())
+        .filter(e => e.batchId && !(e.batchId.courseId && e.batchId.courseId.title))
+        .map(e => e.batchId && e.batchId._id ? e.batchId._id.toString() : null)
+        .filter(Boolean)
     )];
-    let coursesByBatchId = {};
+    const coursesByBatchId = {};
     if (batchIdsNeedingCourse.length > 0) {
-      const courses = await Course.find({
-        batchId: { $in: batchIdsNeedingCourse }
-      }).select('title slug thumbnailImage shortDescription price discountPrice batchId').lean();
+      const objectIds = batchIdsNeedingCourse.map(id => new mongoose.Types.ObjectId(id));
+      const courses = await Course.find({ batchId: { $in: objectIds } })
+        .select('title slug thumbnailImage shortDescription price discountPrice batchId')
+        .lean();
       courses.forEach(c => {
         if (c.batchId) coursesByBatchId[c.batchId.toString()] = c;
       });
     }
     enrollments.forEach(e => {
-      if (e.batchId && !e.batchId.courseId) {
-        const course = coursesByBatchId[e.batchId._id.toString()];
-        if (course) {
-          e.batchId.courseId = course;
+      if (e.batchId) {
+        const needCourse = !(e.batchId.courseId && e.batchId.courseId.title);
+        if (needCourse) {
+          const bid = e.batchId._id ? e.batchId._id.toString() : e.batchId.toString();
+          const course = coursesByBatchId[bid];
+          if (course) {
+            e.batchId.courseId = course;
+          }
         }
       }
     });
@@ -100,7 +108,8 @@ router.get('/:id', async (req, res) => {
           path: 'courseId',
           select: 'title slug thumbnailImage shortDescription price discountPrice'
         }
-      });
+      })
+      .lean();
 
     if (!enrollment) {
       return res.status(404).json({
@@ -109,9 +118,10 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Fallback: resolve course via Course.batchId when batch.courseId is missing
-    if (enrollment.batchId && !enrollment.batchId.courseId) {
-      const course = await Course.findOne({ batchId: enrollment.batchId._id })
+    // Fallback: resolve course via Course.batchId when batch has no course
+    if (enrollment.batchId && !(enrollment.batchId.courseId && enrollment.batchId.courseId.title)) {
+      const batchId = enrollment.batchId._id || enrollment.batchId;
+      const course = await Course.findOne({ batchId })
         .select('title slug thumbnailImage shortDescription price discountPrice')
         .lean();
       if (course) enrollment.batchId.courseId = course;
