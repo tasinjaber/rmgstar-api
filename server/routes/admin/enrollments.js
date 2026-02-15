@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Enrollment = require('../../models/Enrollment');
+const Course = require('../../models/Course');
 
 // Get all enrollments
 router.get('/', async (req, res) => {
@@ -16,7 +17,6 @@ router.get('/', async (req, res) => {
     if (batchId) query.batchId = batchId;
     if (paymentStatus) query.paymentStatus = paymentStatus;
     if (category) {
-      const Course = require('../../models/Course');
       const Batch = require('../../models/Batch');
       const courseIds = (await Course.find({ category }).select('_id')).map(c => c._id);
       const batches = await Batch.find({ courseId: { $in: courseIds } }).select('_id');
@@ -42,6 +42,30 @@ router.get('/', async (req, res) => {
       .limit(parseInt(limit));
 
     const total = await Enrollment.countDocuments(query);
+
+    // Fallback: batches created before courseId existed — resolve course via Course.batchId
+    const batchIdsNeedingCourse = [...new Set(
+      enrollments
+        .filter(e => e.batchId && !e.batchId.courseId)
+        .map(e => e.batchId._id.toString())
+    )];
+    let coursesByBatchId = {};
+    if (batchIdsNeedingCourse.length > 0) {
+      const courses = await Course.find({
+        batchId: { $in: batchIdsNeedingCourse }
+      }).select('title slug thumbnailImage shortDescription price discountPrice batchId').lean();
+      courses.forEach(c => {
+        if (c.batchId) coursesByBatchId[c.batchId.toString()] = c;
+      });
+    }
+    enrollments.forEach(e => {
+      if (e.batchId && !e.batchId.courseId) {
+        const course = coursesByBatchId[e.batchId._id.toString()];
+        if (course) {
+          e.batchId.courseId = course;
+        }
+      }
+    });
 
     res.json({
       success: true,
@@ -83,6 +107,14 @@ router.get('/:id', async (req, res) => {
         success: false,
         message: 'Enrollment not found'
       });
+    }
+
+    // Fallback: resolve course via Course.batchId when batch.courseId is missing
+    if (enrollment.batchId && !enrollment.batchId.courseId) {
+      const course = await Course.findOne({ batchId: enrollment.batchId._id })
+        .select('title slug thumbnailImage shortDescription price discountPrice')
+        .lean();
+      if (course) enrollment.batchId.courseId = course;
     }
 
     res.json({
